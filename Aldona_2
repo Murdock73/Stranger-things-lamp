@@ -1,0 +1,141 @@
+#include "alphabet.h"
+
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+#define PIN            D2 
+#define NUMPIXELS      26
+
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+AsyncWebServer server(80);
+
+// REPLACE WITH YOUR NETWORK CREDENTIALS
+const char* ssid = "Stranger_Things_Lamp";
+const char* password = "Aldona_Undi";
+
+const char* PARAM_INPUT_1 = "input1";
+// Misc variables
+unsigned long timestamp; 
+String inputParam;
+String frase;
+byte lettere[99];
+
+
+// HTML web page to handle 3 input fields (input1, input2, input3)
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html><head>
+  <title>ESP Input Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head><body>
+  <form action="/get">
+    input1: <input type="text" name="input1">
+    <input type="submit" value="Submit">
+  </form><br>
+</body></html>)rawliteral";
+
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.print("Setting AP (Access Point)…");
+  // Remove the password parameter, if you want the AP (Access Point) to be open
+  WiFi.softAP(ssid, password);
+
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(IP);
+
+  // Print ESP8266 Local IP Address
+  Serial.println(WiFi.localIP());
+
+  timestamp = millis();
+
+  // Send web page with input fields to client
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html);
+  });
+
+  // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_1)) {
+      frase = request->getParam(PARAM_INPUT_1)->value();
+      frase.toLowerCase();
+      inputParam = PARAM_INPUT_1;
+    }
+
+    else {
+      frase = "No message sent";
+      inputParam = "none";
+    }
+    Serial.println(frase);
+    request->send(200, "text/html", "HTTP GET request sent to your ESP on input field (" 
+                                     + inputParam + ") with value: " + frase +
+                                     "<br><a href=\"/\">Return to Home Page</a>");
+  });
+  server.onNotFound(notFound);
+  server.begin();
+}
+
+
+void loop() {
+    Serial.println(frase);
+    frase.getBytes(lettere, 99);
+    for (int x = 0; x <= 99; x++) {
+      
+      byte byteRead=lettere[x];
+
+      if (byteRead >= 97 && byteRead <= 122) {
+
+        int j = getIndexOfLetter(byteRead);
+        
+        if (0 <= j && j < NUMPIXELS) {
+          int red = alphabet[j].red;
+          int blue = alphabet[j].blue;
+          int green = alphabet[j].green;
+  
+          // set LED and show it
+          pixels.setPixelColor(j, pixels.Color(red, green, blue));
+          pixels.show();
+          Serial.println(byteRead);
+  
+          // after 1.5 seconds
+          delay(1500);
+          // clear pixels,
+          clearAllPixels();
+          // then wait before moving onto the next character
+          delay(250);
+        }
+      }
+    }
+    delay(3000);
+}
+
+/* Helper function that gets the index of a given letter 
+from the alphabet RGB data structure */
+int getIndexOfLetter(char letter) {
+    for (int i=0; i<NUMPIXELS; i++) {
+        if(alphabet[i].letter == letter) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* Helper function that clears all the pixels */
+void clearAllPixels() {
+    for(int i=0;i<NUMPIXELS;i++)
+    { 
+        pixels.setPixelColor(i, pixels.Color(0, 0, 0)); 
+    } 
+    pixels.show(); 
+} 
