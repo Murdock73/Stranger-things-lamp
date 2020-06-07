@@ -1,3 +1,6 @@
+
+#include <Adafruit_NeoPixel.h>
+
 #include "alphabet.h"
 
 #include <Arduino.h>
@@ -9,7 +12,7 @@
   #include <avr/power.h>
 #endif
 
-#define PIN            D2 
+#define PIN            D1
 #define NUMPIXELS      26
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
@@ -18,7 +21,7 @@ AsyncWebServer server(80);
 
 // REPLACE WITH YOUR NETWORK CREDENTIALS
 const char* ssid = "Stranger_Things_Lamp";
-const char* password = "Aldona_Undi";
+const char* password = "Aldona11";
 
 const char* PARAM_INPUT_1 = "input1";
 // Misc variables
@@ -56,6 +59,8 @@ void setup() {
 
   // Print ESP8266 Local IP Address
   Serial.println(WiFi.localIP());
+  delay(10);
+  pixels.begin(); // Initialize strand of LEDs
 
   timestamp = millis();
 
@@ -88,6 +93,9 @@ void setup() {
 
 
 void loop() {
+    for (int x = 0; x <= 99; x++) {
+      lettere[x] = 0;
+    }
     Serial.println(frase);
     frase.getBytes(lettere, 99);
     for (int x = 0; x <= 99; x++) {
@@ -97,7 +105,6 @@ void loop() {
       if (byteRead >= 97 && byteRead <= 122) {
 
         int j = getIndexOfLetter(byteRead);
-        
         if (0 <= j && j < NUMPIXELS) {
           int red = alphabet[j].red;
           int blue = alphabet[j].blue;
@@ -105,6 +112,7 @@ void loop() {
   
           // set LED and show it
           pixels.setPixelColor(j, pixels.Color(red, green, blue));
+          delay(10);
           pixels.show();
           Serial.println(byteRead);
   
